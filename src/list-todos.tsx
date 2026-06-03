@@ -281,8 +281,10 @@ export default function ListTodos() {
   const prefs = getPreferences();
   const { push } = useNavigation();
 
-  const [sortOrder, setSortOrder] = useState<SortOrder>(prefs.defaultSort);
-  const [groupBy, setGroupBy] = useState<GroupBy>(prefs.groupBy);
+  // Single dropdown value encodes both sort and group as "sort|group"
+  const initialDropdown = `${prefs.defaultSort}|${prefs.groupBy}`;
+  const [dropdownValue, setDropdownValue] = useState<string>(initialDropdown);
+  const [sortOrder, groupBy] = dropdownValue.split("|") as [SortOrder, GroupBy];
   const [showCompleted, setShowCompleted] = useState<boolean>(
     prefs.showCompleted,
   );
@@ -423,62 +425,88 @@ export default function ListTodos() {
       searchBarAccessory={
         <List.Dropdown
           tooltip="Sort & Group"
-          onChange={(val) => {
-            if (val.startsWith("sort:")) {
-              setSortOrder(val.slice(5) as SortOrder);
-            } else if (val.startsWith("group:")) {
-              setGroupBy(val.slice(6) as GroupBy);
-            }
-          }}
+          value={dropdownValue}
+          onChange={setDropdownValue}
         >
-          <List.Dropdown.Section title="Sort By">
+          <List.Dropdown.Section title="Sort by Priority">
             <List.Dropdown.Item
-              title="Priority"
-              value="sort:priority"
+              title="Priority — Group by Priority"
+              value="priority|priority"
               icon={Icon.ArrowUp}
             />
             <List.Dropdown.Item
-              title="Due Date"
-              value="sort:due-date"
-              icon={Icon.Calendar}
+              title="Priority — Group by Project"
+              value="priority|project"
+              icon={Icon.ArrowUp}
             />
             <List.Dropdown.Item
-              title="Creation Date (Newest)"
-              value="sort:creation-date-desc"
-              icon={Icon.Clock}
+              title="Priority — Group by Context"
+              value="priority|context"
+              icon={Icon.ArrowUp}
             />
             <List.Dropdown.Item
-              title="Creation Date (Oldest)"
-              value="sort:creation-date-asc"
-              icon={Icon.Clock}
-            />
-            <List.Dropdown.Item
-              title="Alphabetical"
-              value="sort:alpha"
-              icon={Icon.Text}
+              title="Priority — No Grouping"
+              value="priority|none"
+              icon={Icon.ArrowUp}
             />
           </List.Dropdown.Section>
 
-          <List.Dropdown.Section title="Group By">
+          <List.Dropdown.Section title="Sort by Due Date">
             <List.Dropdown.Item
-              title="Group: Priority"
-              value="group:priority"
-              icon={Icon.BarChart}
+              title="Due Date — Group by Priority"
+              value="due-date|priority"
+              icon={Icon.Calendar}
             />
             <List.Dropdown.Item
-              title="Group: Project"
-              value="group:project"
-              icon={Icon.Folder}
+              title="Due Date — Group by Project"
+              value="due-date|project"
+              icon={Icon.Calendar}
             />
             <List.Dropdown.Item
-              title="Group: Context"
-              value="group:context"
-              icon={Icon.Person}
+              title="Due Date — Group by Context"
+              value="due-date|context"
+              icon={Icon.Calendar}
             />
             <List.Dropdown.Item
-              title="Group: None"
-              value="group:none"
-              icon={Icon.Minus}
+              title="Due Date — No Grouping"
+              value="due-date|none"
+              icon={Icon.Calendar}
+            />
+          </List.Dropdown.Section>
+
+          <List.Dropdown.Section title="Sort by Creation Date">
+            <List.Dropdown.Item
+              title="Newest First — No Grouping"
+              value="creation-date-desc|none"
+              icon={Icon.Clock}
+            />
+            <List.Dropdown.Item
+              title="Oldest First — No Grouping"
+              value="creation-date-asc|none"
+              icon={Icon.Clock}
+            />
+          </List.Dropdown.Section>
+
+          <List.Dropdown.Section title="Sort Alphabetically">
+            <List.Dropdown.Item
+              title="A → Z — Group by Priority"
+              value="alpha|priority"
+              icon={Icon.Text}
+            />
+            <List.Dropdown.Item
+              title="A → Z — Group by Project"
+              value="alpha|project"
+              icon={Icon.Text}
+            />
+            <List.Dropdown.Item
+              title="A → Z — Group by Context"
+              value="alpha|context"
+              icon={Icon.Text}
+            />
+            <List.Dropdown.Item
+              title="A → Z — No Grouping"
+              value="alpha|none"
+              icon={Icon.Text}
             />
           </List.Dropdown.Section>
         </List.Dropdown>

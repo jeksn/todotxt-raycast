@@ -7,7 +7,7 @@ import {
   LaunchType,
   showHUD,
 } from "@raycast/api";
-import { useCachedPromise } from "@raycast/utils";
+import { usePromise } from "@raycast/utils";
 import { readTodos, completeTodo, sortTodos } from "./storage";
 import { getPreferences } from "./preferences";
 import { getPriorityColor } from "./types";
@@ -28,46 +28,29 @@ export default function MenuBar() {
     data: todos,
     isLoading,
     revalidate,
-    mutate,
-  } = useCachedPromise(() => readTodos(prefs.todoFilePath), [], {
-    keepPreviousData: true,
-  });
+  } = usePromise(() => readTodos(prefs.todoFilePath));
 
   const allTodos = todos ?? [];
   const pending = allTodos.filter((t) => !t.completed);
   const overdue = pending.filter((t) => {
     const due = t.tags["due"];
     if (!due) return false;
-    const today = new Date().toISOString().split("T")[0];
-    return due < today;
+    return due < new Date().toISOString().split("T")[0];
   });
 
   const sorted = sortTodos(pending, "priority");
   const topItems = sorted.slice(0, MAX_ITEMS);
 
+  // Fire-and-forget: write to disk then show HUD. No mutate/abort risk.
   async function handleComplete(item: TodoItem) {
     try {
-      await mutate(
-        completeTodo(
-          prefs.todoFilePath,
-          prefs.doneFilePath,
-          item,
-          prefs.archiveDone,
-        ),
-        {
-          optimisticUpdate: (current) => {
-            if (!current) return current;
-            if (prefs.archiveDone)
-              return current.filter((t) => t.lineNumber !== item.lineNumber);
-            const today = new Date().toISOString().split("T")[0];
-            return current.map((t) =>
-              t.lineNumber === item.lineNumber
-                ? { ...t, completed: true, completionDate: today }
-                : t,
-            );
-          },
-        },
+      await completeTodo(
+        prefs.todoFilePath,
+        prefs.doneFilePath,
+        item,
+        prefs.archiveDone,
       );
+      revalidate();
       await showHUD(`Completed: ${item.text}`);
     } catch {
       await showHUD("Failed to complete task");

@@ -12,7 +12,7 @@ import {
   openExtensionPreferences,
 } from "@raycast/api";
 import { useCachedPromise } from "@raycast/utils";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { TodoItem } from "./types";
 import { getPriorityColor } from "./types";
 import {
@@ -70,8 +70,44 @@ function buildAccessories(item: TodoItem): List.Item.Accessory[] {
 // Main command
 // ---------------------------------------------------------------------------
 
+type DoneSort =
+  | "completion-date-desc"
+  | "completion-date-asc"
+  | "priority"
+  | "creation-date-desc"
+  | "alpha";
+
+function sortDone(items: TodoItem[], order: DoneSort): TodoItem[] {
+  const copy = [...items];
+  switch (order) {
+    case "completion-date-desc":
+      return copy.sort((a, b) =>
+        (b.completionDate ?? "").localeCompare(a.completionDate ?? ""),
+      );
+    case "completion-date-asc":
+      return copy.sort((a, b) =>
+        (a.completionDate ?? "").localeCompare(b.completionDate ?? ""),
+      );
+    case "priority":
+      return copy.sort((a, b) =>
+        (a.priority ?? "ZZ").localeCompare(b.priority ?? "ZZ"),
+      );
+    case "creation-date-desc":
+      return copy.sort((a, b) =>
+        (b.creationDate ?? "").localeCompare(a.creationDate ?? ""),
+      );
+    case "alpha":
+      return copy.sort((a, b) =>
+        a.text.toLowerCase().localeCompare(b.text.toLowerCase()),
+      );
+    default:
+      return copy;
+  }
+}
+
 export default function ListDone() {
   const prefs = getPreferences();
+  const [sortOrder, setSortOrder] = useState<DoneSort>("completion-date-desc");
 
   const {
     data: items,
@@ -84,13 +120,7 @@ export default function ListDone() {
   );
 
   const allItems = items ?? [];
-
-  // Sort by completion date descending (most recently completed first)
-  const sorted = [...allItems].sort((a, b) => {
-    const da = a.completionDate ?? "";
-    const db = b.completionDate ?? "";
-    return db.localeCompare(da);
-  });
+  const sorted = sortDone(allItems, sortOrder);
 
   const handleRestore = useCallback(
     async (item: TodoItem) => {
@@ -156,6 +186,39 @@ export default function ListDone() {
     <List
       isLoading={isLoading}
       searchBarPlaceholder={`Search ${allItems.length} completed task${allItems.length !== 1 ? "s" : ""}…`}
+      searchBarAccessory={
+        <List.Dropdown
+          tooltip="Sort"
+          value={sortOrder}
+          onChange={(val) => setSortOrder(val as DoneSort)}
+        >
+          <List.Dropdown.Item
+            title="Completed Date (Newest)"
+            value="completion-date-desc"
+            icon={Icon.Clock}
+          />
+          <List.Dropdown.Item
+            title="Completed Date (Oldest)"
+            value="completion-date-asc"
+            icon={Icon.Clock}
+          />
+          <List.Dropdown.Item
+            title="Priority"
+            value="priority"
+            icon={Icon.ArrowUp}
+          />
+          <List.Dropdown.Item
+            title="Creation Date (Newest)"
+            value="creation-date-desc"
+            icon={Icon.Calendar}
+          />
+          <List.Dropdown.Item
+            title="Alphabetical"
+            value="alpha"
+            icon={Icon.Text}
+          />
+        </List.Dropdown>
+      }
     >
       {sorted.map((item) => (
         <List.Item
