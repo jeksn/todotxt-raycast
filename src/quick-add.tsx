@@ -105,7 +105,7 @@ export default function QuickAdd() {
       <Form.TextField
         id="raw"
         title="Task"
-        placeholder="(A) Fix login bug +raycast @dev due:2024-01-25"
+        placeholder="(B) 2026-06-02 Update documentation +work @docs due:2026-06-05"
         value={raw}
         onChange={setRaw}
         error={rawError}
