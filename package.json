@@ -31,6 +31,13 @@
       "keywords": ["todo", "task", "quick", "add"]
     },
     {
+      "name": "list-done",
+      "title": "List Completed Todos",
+      "description": "Browse completed tasks from done.txt",
+      "mode": "view",
+      "keywords": ["todo", "done", "completed", "archive"]
+    },
+    {
       "name": "menu-bar",
       "title": "Todo Count",
       "description": "Show pending todo count in the menu bar",

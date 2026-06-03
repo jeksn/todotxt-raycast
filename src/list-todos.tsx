@@ -318,16 +318,11 @@ export default function ListTodos() {
             optimisticUpdate: (current) => {
               if (!current) return current;
               if (prefs.archiveDone)
-                return current.filter((t) => t.id !== item.id);
+                return current.filter((t) => t.lineNumber !== item.lineNumber);
               const today = new Date().toISOString().split("T")[0];
               return current.map((t) =>
-                t.id === item.id
-                  ? {
-                      ...t,
-                      completed: true,
-                      completionDate: today,
-                      priority: undefined,
-                    }
+                t.lineNumber === item.lineNumber
+                  ? { ...t, completed: true, completionDate: today }
                   : t,
               );
             },
@@ -365,7 +360,7 @@ export default function ListTodos() {
       try {
         await mutate(deleteTodo(prefs.todoFilePath, item), {
           optimisticUpdate: (current) =>
-            current?.filter((t) => t.id !== item.id),
+            current?.filter((t) => t.lineNumber !== item.lineNumber),
         });
         toast.style = Toast.Style.Success;
         toast.title = "Task deleted";

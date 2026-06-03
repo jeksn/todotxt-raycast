@@ -28,6 +28,7 @@ export default function MenuBar() {
     data: todos,
     isLoading,
     revalidate,
+    mutate,
   } = useCachedPromise(() => readTodos(prefs.todoFilePath), [], {
     keepPreviousData: true,
   });
@@ -46,14 +47,28 @@ export default function MenuBar() {
 
   async function handleComplete(item: TodoItem) {
     try {
-      await completeTodo(
-        prefs.todoFilePath,
-        prefs.doneFilePath,
-        item,
-        prefs.archiveDone,
+      await mutate(
+        completeTodo(
+          prefs.todoFilePath,
+          prefs.doneFilePath,
+          item,
+          prefs.archiveDone,
+        ),
+        {
+          optimisticUpdate: (current) => {
+            if (!current) return current;
+            if (prefs.archiveDone)
+              return current.filter((t) => t.lineNumber !== item.lineNumber);
+            const today = new Date().toISOString().split("T")[0];
+            return current.map((t) =>
+              t.lineNumber === item.lineNumber
+                ? { ...t, completed: true, completionDate: today }
+                : t,
+            );
+          },
+        },
       );
       await showHUD(`Completed: ${item.text}`);
-      revalidate();
     } catch {
       await showHUD("Failed to complete task");
     }

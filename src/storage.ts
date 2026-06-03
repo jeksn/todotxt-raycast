@@ -120,6 +120,9 @@ export function parseLine(line: string, lineNumber: number): TodoItem | null {
 
 /**
  * Serialize a TodoItem back into a todo.txt line.
+ *
+ * Completed format (per spec): x <completion-date> <priority> <creation-date> <description>
+ * Priority is preserved on completion so it can be restored if the task is un-completed.
  */
 export function serializeItem(item: TodoItem): string {
   const parts: string[] = [];
@@ -129,7 +132,8 @@ export function serializeItem(item: TodoItem): string {
     if (item.completionDate) parts.push(item.completionDate);
   }
 
-  if (item.priority && !item.completed) {
+  // Priority is always written when present (even for completed tasks)
+  if (item.priority) {
     parts.push(`(${item.priority})`);
   }
 
@@ -250,22 +254,19 @@ export async function completeTodo(
 ): Promise<TodoItem[]> {
   const today = new Date().toISOString().split("T")[0];
 
+  // Priority is preserved on completion (stored in the completed line so it
+  // can be restored if the task is un-done later).
   const completedItem: TodoItem = {
     ...item,
     completed: true,
     completionDate: today,
-    // Remove priority on completion (todo.txt spec: priority is removed on completion)
-    priority: undefined,
-    raw: serializeItem({
-      ...item,
-      completed: true,
-      completionDate: today,
-      priority: undefined,
-    }),
   };
+  completedItem.raw = serializeItem(completedItem);
 
   const allItems = await readTodos(todoFilePath);
-  const remaining = allItems.filter((t) => t.id !== item.id);
+  // Match by lineNumber — id is regenerated on every file read so it can't be
+  // used to correlate items across reads.
+  const remaining = allItems.filter((t) => t.lineNumber !== item.lineNumber);
 
   if (archive) {
     // Remove from todo.txt
@@ -287,8 +288,10 @@ export async function completeTodo(
 
     return remaining;
   } else {
-    // Replace the item in place with the completed version
-    const updated = allItems.map((t) => (t.id === item.id ? completedItem : t));
+    // Replace the item in place with the completed version, matched by lineNumber
+    const updated = allItems.map((t) =>
+      t.lineNumber === item.lineNumber ? completedItem : t,
+    );
     await writeTodos(todoFilePath, updated);
     return updated;
   }
@@ -320,6 +323,94 @@ export async function updateTodo(
   );
   await writeTodos(todoFilePath, newItems);
   return newItems;
+}
+
+/**
+ * Read and parse the done.txt file. Returns an empty array if the file
+ * does not exist or if no doneFilePath is configured.
+ */
+export async function readDoneTodos(
+  todoFilePath: string,
+  doneFilePath: string | undefined,
+): Promise<TodoItem[]> {
+  const resolvedDone = doneFilePath
+    ? expandPath(doneFilePath)
+    : join(dirname(expandPath(todoFilePath)), "done.txt");
+
+  const exists = await fileExists(resolvedDone);
+  if (!exists) return [];
+
+  const content = await readFile(resolvedDone, "utf-8");
+  const lines = content.split("\n");
+  const items: TodoItem[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const item = parseLine(lines[i], i + 1);
+    if (item) items.push(item);
+  }
+
+  return items;
+}
+
+/**
+ * Permanently delete an item from done.txt by line number.
+ */
+export async function deleteDoneTodo(
+  todoFilePath: string,
+  doneFilePath: string | undefined,
+  item: TodoItem,
+): Promise<TodoItem[]> {
+  const resolvedDone = doneFilePath
+    ? expandPath(doneFilePath)
+    : join(dirname(expandPath(todoFilePath)), "done.txt");
+
+  const doneItems = await readDoneTodos(todoFilePath, doneFilePath);
+  const remaining = doneItems.filter((t) => t.lineNumber !== item.lineNumber);
+  const doneLines = remaining.map(serializeItem);
+  await writeFile(
+    resolvedDone,
+    doneLines.join("\n") + (doneLines.length > 0 ? "\n" : ""),
+    "utf-8",
+  );
+  return remaining;
+}
+
+/**
+ * Restore a completed task from done.txt back to todo.txt, removing the
+ * completion mark and completion date but keeping everything else.
+ */
+export async function restoreTodo(
+  todoFilePath: string,
+  doneFilePath: string | undefined,
+  item: TodoItem,
+): Promise<TodoItem[]> {
+  const resolvedDone = doneFilePath
+    ? expandPath(doneFilePath)
+    : join(dirname(expandPath(todoFilePath)), "done.txt");
+
+  // Remove from done.txt
+  const doneItems = await readDoneTodos(todoFilePath, doneFilePath);
+  const remainingDone = doneItems.filter(
+    (t) => t.lineNumber !== item.lineNumber,
+  );
+  const doneLines = remainingDone.map(serializeItem);
+  await writeFile(
+    resolvedDone,
+    doneLines.join("\n") + (doneLines.length > 0 ? "\n" : ""),
+    "utf-8",
+  );
+
+  // Restore to todo.txt (strip completion mark and date, keep priority)
+  const restoredItem: TodoItem = {
+    ...item,
+    completed: false,
+    completionDate: undefined,
+  };
+  restoredItem.raw = serializeItem(restoredItem);
+
+  await appendTodo(todoFilePath, restoredItem.raw);
+
+  return remainingDone;
 }
 
 // ---------------------------------------------------------------------------
