@@ -42,7 +42,7 @@
       "title": "Todo Count",
       "description": "Show pending todo count in the menu bar",
       "mode": "menu-bar",
-      "interval": "30m"
+      "interval": "5m"
     }
   ],
   "preferences": [

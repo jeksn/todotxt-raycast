@@ -8,7 +8,9 @@ import {
   showHUD,
 } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
+import { useState, useEffect } from "react";
 import { readTodos, completeTodo, sortTodos } from "./storage";
+import { getCachedTodos } from "./cache";
 import { getPreferences } from "./preferences";
 import { getPriorityColor } from "./types";
 import type { TodoItem } from "./types";
@@ -24,25 +26,39 @@ function itemTitle(item: TodoItem): string {
 export default function MenuBar() {
   const prefs = getPreferences();
 
-  const {
-    data: todos,
-    isLoading,
-    revalidate,
-  } = usePromise(() => readTodos(prefs.todoFilePath));
+  // Seed state synchronously from cache — menu bar title is correct on first frame
+  const [todos, setTodos] = useState<TodoItem[]>(() => getCachedTodos());
 
-  const allTodos = todos ?? [];
-  const pending = allTodos.filter((t) => !t.completed);
+  const { data: freshTodos, revalidate } = usePromise(() =>
+    readTodos(prefs.todoFilePath),
+  );
+
+  // Whenever the async fetch completes, update local state
+  useEffect(() => {
+    if (freshTodos) setTodos(freshTodos);
+  }, [freshTodos]);
+
+  const pending = todos.filter((t) => !t.completed);
+  const today = new Date().toISOString().split("T")[0];
   const overdue = pending.filter((t) => {
     const due = t.tags["due"];
-    if (!due) return false;
-    return due < new Date().toISOString().split("T")[0];
+    return due ? due < today : false;
   });
 
   const sorted = sortTodos(pending, "priority");
   const topItems = sorted.slice(0, MAX_ITEMS);
 
-  // Fire-and-forget: write to disk then show HUD. No mutate/abort risk.
   async function handleComplete(item: TodoItem) {
+    // Optimistically update local state immediately
+    setTodos((current) => {
+      if (prefs.archiveDone)
+        return current.filter((t) => t.lineNumber !== item.lineNumber);
+      return current.map((t) =>
+        t.lineNumber === item.lineNumber
+          ? { ...t, completed: true, completionDate: today }
+          : t,
+      );
+    });
     try {
       await completeTodo(
         prefs.todoFilePath,
@@ -53,12 +69,14 @@ export default function MenuBar() {
       revalidate();
       await showHUD(`Completed: ${item.text}`);
     } catch {
+      // Roll back on failure
+      revalidate();
       await showHUD("Failed to complete task");
     }
   }
 
   const count = pending.length;
-  const title = isLoading ? undefined : count > 0 ? String(count) : undefined;
+  const title = count > 0 ? String(count) : undefined;
   const icon =
     overdue.length > 0
       ? { source: Icon.ExclamationMark, tintColor: Color.Red }
@@ -72,7 +90,6 @@ export default function MenuBar() {
       icon={icon}
       title={title}
       tooltip={`${count} pending task${count !== 1 ? "s" : ""}${overdue.length > 0 ? `, ${overdue.length} overdue` : ""}`}
-      isLoading={isLoading}
     >
       <MenuBarExtra.Section
         title={`${count} Pending Task${count !== 1 ? "s" : ""}`}
@@ -105,7 +122,7 @@ export default function MenuBar() {
             }
           />
         )}
-        {count === 0 && !isLoading && (
+        {count === 0 && (
           <MenuBarExtra.Item
             title="All done! No pending tasks."
             icon={Icon.Checkmark}

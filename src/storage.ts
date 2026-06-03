@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "path";
 import { homedir } from "os";
 import { randomUUID } from "crypto";
 import type { TodoItem, SortOrder } from "./types";
+import { cacheTodos } from "./cache";
 
 // ---------------------------------------------------------------------------
 // Path utilities
@@ -191,6 +192,7 @@ export async function readTodos(todoFilePath: string): Promise<TodoItem[]> {
     if (item) items.push(item);
   }
 
+  cacheTodos(items);
   return items;
 }
 
@@ -236,6 +238,10 @@ export async function appendTodo(
   const content = await readFile(path, "utf-8");
   const prefix = content.length > 0 && !content.endsWith("\n") ? "\n" : "";
   await appendFile(path, prefix + line + "\n", "utf-8");
+
+  // Re-read to get accurate line numbers and update cache
+  const updated = await readTodos(todoFilePath);
+  cacheTodos(updated);
 }
 
 /**
@@ -286,6 +292,7 @@ export async function completeTodo(
       "utf-8",
     );
 
+    cacheTodos(remaining);
     return remaining;
   } else {
     // Replace the item in place with the completed version, matched by lineNumber
@@ -293,6 +300,7 @@ export async function completeTodo(
       t.lineNumber === item.lineNumber ? completedItem : t,
     );
     await writeTodos(todoFilePath, updated);
+    cacheTodos(updated);
     return updated;
   }
 }
@@ -307,6 +315,7 @@ export async function deleteTodo(
   const allItems = await readTodos(todoFilePath);
   const remaining = allItems.filter((t) => t.lineNumber !== item.lineNumber);
   await writeTodos(todoFilePath, remaining);
+  cacheTodos(remaining);
   return remaining;
 }
 
@@ -322,6 +331,7 @@ export async function updateTodo(
     t.lineNumber === updated.lineNumber ? updated : t,
   );
   await writeTodos(todoFilePath, newItems);
+  cacheTodos(newItems);
   return newItems;
 }
 
