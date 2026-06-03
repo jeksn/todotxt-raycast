@@ -11,29 +11,29 @@
   "commands": [
     {
       "name": "list-todos",
-      "title": "Search Todos",
-      "description": "Search, filter, and manage tasks in your todo.txt file",
+      "title": "List Todos",
+      "description": "List, filter, and manage tasks in your todo.txt file",
       "mode": "view",
       "keywords": ["todo", "task", "list", "search"]
     },
     {
       "name": "add-todo",
-      "title": "Create Todo",
-      "description": "Create a new task with priority, project, context, and due date",
+      "title": "Add Todo",
+      "description": "Add a new task with priority, project, context, and due date",
       "mode": "view",
       "keywords": ["todo", "task", "add", "new", "create"]
     },
     {
       "name": "quick-add",
-      "title": "Quick Create Todo",
-      "description": "Create a task using raw todo.txt syntax in a single text field",
+      "title": "Quick Add Todo",
+      "description": "Add a task using raw todo.txt syntax in a single text field",
       "mode": "view",
       "keywords": ["todo", "task", "quick", "add", "create"]
     },
     {
       "name": "list-done",
-      "title": "Search Completed Todos",
-      "description": "Search completed tasks in done.txt and restore or delete them",
+      "title": "List Completed Todos",
+      "description": "List completed tasks in done.txt and restore or delete them",
       "mode": "view",
       "keywords": ["todo", "done", "completed", "archive"]
     },

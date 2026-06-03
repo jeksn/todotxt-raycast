@@ -216,7 +216,7 @@ function TodoActions({
           onAction={() => push(<EditTodoForm item={item} onSave={onUpdate} />)}
         />
         <Action
-          title="Create Task"
+          title="Add Task"
           icon={Icon.Plus}
           shortcut={{ modifiers: ["cmd"], key: "n" }}
           onAction={onAddNew}
@@ -609,7 +609,7 @@ export default function ListTodos() {
           actions={
             <ActionPanel>
               <Action
-                title="Create Task"
+                title="Add Task"
                 icon={Icon.Plus}
                 shortcut={{ modifiers: ["cmd"], key: "n" }}
                 onAction={handleAddNew}

@@ -35,7 +35,7 @@ x 2026-01-14 (B) 2026-01-10 Buy groceries +Errands @store
 
 ## Commands
 
-### Search Todos
+### List Todos
 Browse and manage all your pending tasks. Use the dropdown to change sort order and grouping. 
 
 - **⌘D** — Mark as complete (or incomplete if already done)
@@ -45,13 +45,13 @@ Browse and manage all your pending tasks. Use the dropdown to change sort order 
 - **⌘R** — Refresh list
 - **⌫** — Delete task
 
-### Create Todo
+### Add Todo
 Form-based task creation with fields for text, priority, project, context, and due date.
 
-### Quick Create Todo
+### Quick Add Todo
 Create a task by typing raw todo.txt syntax directly — fastest way to add tasks without leaving your flow.
 
-### Search Completed Todos
+### List Completed Todos
 Browse tasks in your `done.txt` file. You can restore a completed task back to `todo.txt` or permanently delete it.
 
 ### Todo Count (Menu Bar)
