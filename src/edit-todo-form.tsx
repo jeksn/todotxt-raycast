@@ -1,12 +1,4 @@
-import {
-  Form,
-  ActionPanel,
-  Action,
-  Icon,
-  useNavigation,
-  showToast,
-  Toast,
-} from "@raycast/api";
+import { Form, ActionPanel, Action, Icon, useNavigation } from "@raycast/api";
 import { useState } from "react";
 import type { TodoItem } from "./types";
 import { PRIORITIES } from "./types";
@@ -14,7 +6,7 @@ import { buildDescription, serializeItem } from "./storage";
 
 interface Props {
   item: TodoItem;
-  onSave: (updated: TodoItem) => void;
+  onSave: (updated: TodoItem) => Promise<void>;
 }
 
 export default function EditTodoForm({ item, onSave }: Props) {
@@ -47,7 +39,7 @@ export default function EditTodoForm({ item, onSave }: Props) {
     return true;
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!validate()) return;
 
     const parsedProjects = projects
@@ -92,8 +84,7 @@ export default function EditTodoForm({ item, onSave }: Props) {
     };
     updatedItem.raw = serializeItem(updatedItem);
 
-    onSave(updatedItem);
-    showToast({ style: Toast.Style.Success, title: "Task updated" });
+    await onSave(updatedItem);
     pop();
   }
 

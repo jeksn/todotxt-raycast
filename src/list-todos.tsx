@@ -29,24 +29,21 @@ import EditTodoForm from "./edit-todo-form";
 import AddTodo from "./add-todo";
 
 // ---------------------------------------------------------------------------
-// Priority badge helpers
+// Accessory helpers
 // ---------------------------------------------------------------------------
 
-function priorityTag(
+function priorityAccessory(
   priority: string | undefined,
-): List.Item.Accessory | undefined {
-  if (!priority) return undefined;
+): List.Item.Accessory | null {
+  if (!priority) return null;
   return {
-    tag: {
-      value: priority,
-      color: getPriorityColor(priority) as Color,
-    },
+    tag: { value: priority, color: getPriorityColor(priority) as Color },
     tooltip: `Priority: ${priority}`,
   };
 }
 
-function dueTag(dueDate: string | undefined): List.Item.Accessory | undefined {
-  if (!dueDate) return undefined;
+function dueAccessory(dueDate: string | undefined): List.Item.Accessory | null {
+  if (!dueDate) return null;
   const today = new Date().toISOString().split("T")[0];
   const overdue = dueDate < today;
   const dueToday = dueDate === today;
@@ -63,21 +60,17 @@ function dueTag(dueDate: string | undefined): List.Item.Accessory | undefined {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Item accessories
-// ---------------------------------------------------------------------------
-
 function buildAccessories(item: TodoItem): List.Item.Accessory[] {
-  const accessories: List.Item.Accessory[] = [];
+  const acc: List.Item.Accessory[] = [];
 
-  const p = priorityTag(item.priority);
-  if (p) accessories.push(p);
+  const p = priorityAccessory(item.priority);
+  if (p) acc.push(p);
 
-  const due = dueTag(item.tags["due"]);
-  if (due) accessories.push(due);
+  const due = dueAccessory(item.tags["due"]);
+  if (due) acc.push(due);
 
   if (item.projects.length > 0) {
-    accessories.push({
+    acc.push({
       text: item.projects.map((p) => `+${p}`).join(" "),
       icon: Icon.Tag,
       tooltip: `Projects: ${item.projects.join(", ")}`,
@@ -85,7 +78,7 @@ function buildAccessories(item: TodoItem): List.Item.Accessory[] {
   }
 
   if (item.contexts.length > 0) {
-    accessories.push({
+    acc.push({
       text: item.contexts.map((c) => `@${c}`).join(" "),
       icon: Icon.Person,
       tooltip: `Contexts: ${item.contexts.join(", ")}`,
@@ -93,17 +86,17 @@ function buildAccessories(item: TodoItem): List.Item.Accessory[] {
   }
 
   if (item.completed && item.completionDate) {
-    accessories.push({
+    acc.push({
       date: new Date(item.completionDate),
       tooltip: `Completed: ${item.completionDate}`,
     });
   }
 
-  return accessories;
+  return acc;
 }
 
 // ---------------------------------------------------------------------------
-// Grouping helpers
+// Grouping
 // ---------------------------------------------------------------------------
 
 type Sections = { title: string; items: TodoItem[] }[];
@@ -124,7 +117,6 @@ function groupItems(items: TodoItem[], groupBy: GroupBy): Sections {
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(item);
     }
-    // Sort sections: A, B, C … No Priority, Completed
     const ordered: Sections = [];
     for (const p of PRIORITIES) {
       const key = `Priority ${p}`;
@@ -169,19 +161,27 @@ function groupItems(items: TodoItem[], groupBy: GroupBy): Sections {
 }
 
 // ---------------------------------------------------------------------------
-// Actions for a single item
+// Per-item action panel
 // ---------------------------------------------------------------------------
 
 function TodoActions({
   item,
+  showCompleted,
   onComplete,
   onDelete,
   onUpdate,
+  onToggleCompleted,
+  onAddNew,
+  revalidate,
 }: {
   item: TodoItem;
+  showCompleted: boolean;
   onComplete: (item: TodoItem) => Promise<void>;
   onDelete: (item: TodoItem) => Promise<void>;
-  onUpdate: (item: TodoItem) => void;
+  onUpdate: (item: TodoItem) => Promise<void>;
+  onToggleCompleted: () => void;
+  onAddNew: () => void;
+  revalidate: () => void;
 }) {
   const { push } = useNavigation();
 
@@ -202,20 +202,23 @@ function TodoActions({
           shortcut={{ modifiers: ["cmd"], key: "e" }}
           onAction={() => push(<EditTodoForm item={item} onSave={onUpdate} />)}
         />
+        <Action
+          title="Add New Task"
+          icon={Icon.Plus}
+          shortcut={{ modifiers: ["cmd"], key: "n" }}
+          onAction={onAddNew}
+        />
       </ActionPanel.Section>
 
-      <ActionPanel.Section title="Priority">
+      <ActionPanel.Section title="Set Priority">
         {PRIORITIES.slice(0, 6).map((p) => (
           <Action
             key={p}
-            title={`Set Priority ${p}`}
+            title={`Priority ${p}`}
             icon={{
               source: Icon.Circle,
               tintColor: getPriorityColor(p) as Color,
             }}
-            shortcut={
-              p === "A" ? { modifiers: ["cmd", "shift"], key: "a" } : undefined
-            }
             onAction={() => onUpdate({ ...item, priority: p })}
           />
         ))}
@@ -235,6 +238,20 @@ function TodoActions({
         <Action.CopyToClipboard
           title="Copy Raw Line"
           content={serializeItem(item)}
+        />
+        <Action
+          title="Refresh List"
+          icon={Icon.ArrowClockwise}
+          shortcut={{ modifiers: ["cmd"], key: "r" }}
+          onAction={revalidate}
+        />
+        <Action
+          title={
+            showCompleted ? "Hide Completed Tasks" : "Show Completed Tasks"
+          }
+          icon={showCompleted ? Icon.EyeSlash : Icon.Eye}
+          shortcut={{ modifiers: ["cmd", "shift"], key: "h" }}
+          onAction={onToggleCompleted}
         />
         <Action
           title="Delete Task"
@@ -262,13 +279,13 @@ function TodoActions({
 
 export default function ListTodos() {
   const prefs = getPreferences();
+  const { push } = useNavigation();
+
   const [sortOrder, setSortOrder] = useState<SortOrder>(prefs.defaultSort);
   const [groupBy, setGroupBy] = useState<GroupBy>(prefs.groupBy);
   const [showCompleted, setShowCompleted] = useState<boolean>(
     prefs.showCompleted,
   );
-  const [filterContext, setFilterContext] = useState<string | null>(null);
-  const [filterProject, setFilterProject] = useState<string | null>(null);
 
   const {
     data: todos,
@@ -363,10 +380,7 @@ export default function ListTodos() {
 
   const handleUpdate = useCallback(
     async (updated: TodoItem) => {
-      // Rebuild raw from the updated item
-      const newRaw = serializeItem(updated);
-      const itemWithRaw = { ...updated, raw: newRaw };
-
+      const itemWithRaw = { ...updated, raw: serializeItem(updated) };
       const toast = await showToast({
         style: Toast.Style.Animated,
         title: "Updating task…",
@@ -387,29 +401,20 @@ export default function ListTodos() {
     [prefs, mutate],
   );
 
+  const handleAddNew = useCallback(() => {
+    push(<AddTodo onAdd={revalidate} />);
+  }, [push, revalidate]);
+
   // ---------------------------------------------------------------------------
-  // Filtering and sorting
+  // Filtering & sorting
   // ---------------------------------------------------------------------------
 
   const allItems = todos ?? [];
-
-  const filtered = allItems.filter((item) => {
-    if (!showCompleted && item.completed) return false;
-    if (filterContext && !item.contexts.includes(filterContext)) return false;
-    if (filterProject && !item.projects.includes(filterProject)) return false;
-    return true;
-  });
-
+  const filtered = showCompleted
+    ? allItems
+    : allItems.filter((t) => !t.completed);
   const sorted = sortTodos(filtered, sortOrder);
   const sections = groupItems(sorted, groupBy);
-
-  // Collect unique contexts and projects for filter dropdowns
-  const allContexts = Array.from(
-    new Set(allItems.flatMap((i) => i.contexts)),
-  ).sort();
-  const allProjects = Array.from(
-    new Set(allItems.flatMap((i) => i.projects)),
-  ).sort();
   const pendingCount = allItems.filter((i) => !i.completed).length;
 
   // ---------------------------------------------------------------------------
@@ -419,22 +424,15 @@ export default function ListTodos() {
   return (
     <List
       isLoading={isLoading}
-      searchBarPlaceholder={`Search ${pendingCount} task${pendingCount !== 1 ? "s" : ""}…`}
+      searchBarPlaceholder={`Search ${pendingCount} pending task${pendingCount !== 1 ? "s" : ""}…`}
       searchBarAccessory={
         <List.Dropdown
-          tooltip="Filter & Sort Options"
-          storeValue
+          tooltip="Sort & Group"
           onChange={(val) => {
             if (val.startsWith("sort:")) {
               setSortOrder(val.slice(5) as SortOrder);
             } else if (val.startsWith("group:")) {
               setGroupBy(val.slice(6) as GroupBy);
-            } else if (val.startsWith("context:")) {
-              setFilterContext(val.slice(8) || null);
-            } else if (val.startsWith("project:")) {
-              setFilterProject(val.slice(8) || null);
-            } else if (val === "show-completed") {
-              setShowCompleted((v) => !v);
             }
           }}
         >
@@ -450,12 +448,12 @@ export default function ListTodos() {
               icon={Icon.Calendar}
             />
             <List.Dropdown.Item
-              title="Creation Date (newest)"
+              title="Creation Date (Newest)"
               value="sort:creation-date-desc"
               icon={Icon.Clock}
             />
             <List.Dropdown.Item
-              title="Creation Date (oldest)"
+              title="Creation Date (Oldest)"
               value="sort:creation-date-asc"
               icon={Icon.Clock}
             />
@@ -468,84 +466,27 @@ export default function ListTodos() {
 
           <List.Dropdown.Section title="Group By">
             <List.Dropdown.Item
-              title="Priority"
+              title="Group: Priority"
               value="group:priority"
               icon={Icon.BarChart}
             />
             <List.Dropdown.Item
-              title="Project"
+              title="Group: Project"
               value="group:project"
               icon={Icon.Folder}
             />
             <List.Dropdown.Item
-              title="Context"
+              title="Group: Context"
               value="group:context"
               icon={Icon.Person}
             />
             <List.Dropdown.Item
-              title="None"
+              title="Group: None"
               value="group:none"
               icon={Icon.Minus}
             />
           </List.Dropdown.Section>
-
-          {allContexts.length > 0 && (
-            <List.Dropdown.Section title="Filter by Context">
-              <List.Dropdown.Item
-                title="All Contexts"
-                value="context:"
-                icon={Icon.XMarkCircle}
-              />
-              {allContexts.map((ctx) => (
-                <List.Dropdown.Item
-                  key={ctx}
-                  title={`@${ctx}`}
-                  value={`context:${ctx}`}
-                  icon={Icon.Person}
-                />
-              ))}
-            </List.Dropdown.Section>
-          )}
-
-          {allProjects.length > 0 && (
-            <List.Dropdown.Section title="Filter by Project">
-              <List.Dropdown.Item
-                title="All Projects"
-                value="project:"
-                icon={Icon.XMarkCircle}
-              />
-              {allProjects.map((proj) => (
-                <List.Dropdown.Item
-                  key={proj}
-                  title={`+${proj}`}
-                  value={`project:${proj}`}
-                  icon={Icon.Tag}
-                />
-              ))}
-            </List.Dropdown.Section>
-          )}
         </List.Dropdown>
-      }
-      actions={
-        <ActionPanel>
-          <Action.Push
-            title="Add New Todo"
-            icon={Icon.Plus}
-            shortcut={{ modifiers: ["cmd"], key: "n" }}
-            target={<AddTodoPlaceholder onAdd={revalidate} />}
-          />
-          <Action
-            title="Refresh"
-            icon={Icon.ArrowClockwise}
-            onAction={revalidate}
-            shortcut={{ modifiers: ["cmd"], key: "r" }}
-          />
-          <Action
-            title={showCompleted ? "Hide Completed" : "Show Completed"}
-            icon={showCompleted ? Icon.EyeSlash : Icon.Eye}
-            onAction={() => setShowCompleted((v) => !v)}
-          />
-        </ActionPanel>
       }
     >
       {sections.map((section) => (
@@ -582,9 +523,13 @@ export default function ListTodos() {
               actions={
                 <TodoActions
                   item={item}
+                  showCompleted={showCompleted}
                   onComplete={handleComplete}
                   onDelete={handleDelete}
                   onUpdate={handleUpdate}
+                  onToggleCompleted={() => setShowCompleted((v) => !v)}
+                  onAddNew={handleAddNew}
+                  revalidate={revalidate}
                 />
               }
             />
@@ -595,10 +540,16 @@ export default function ListTodos() {
       {!isLoading && allItems.length === 0 && (
         <List.EmptyView
           title="No Todos Found"
-          description="Press ⌘N to add your first task, or check your todo.txt file path in preferences."
+          description="Press ⌘N to add your first task, or check your todo.txt file path in Preferences."
           icon={Icon.Checkmark}
           actions={
             <ActionPanel>
+              <Action
+                title="Add New Task"
+                icon={Icon.Plus}
+                shortcut={{ modifiers: ["cmd"], key: "n" }}
+                onAction={handleAddNew}
+              />
               <Action
                 title="Open Preferences"
                 icon={Icon.Gear}
@@ -609,21 +560,5 @@ export default function ListTodos() {
         />
       )}
     </List>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Thin placeholder to push add-todo from within the list
-// ---------------------------------------------------------------------------
-
-function AddTodoPlaceholder({ onAdd }: { onAdd: () => void }) {
-  const { pop } = useNavigation();
-  return (
-    <AddTodo
-      onAdd={() => {
-        onAdd();
-        pop();
-      }}
-    />
   );
 }
