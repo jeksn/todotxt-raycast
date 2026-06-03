@@ -336,6 +336,23 @@ export async function updateTodo(
 }
 
 /**
+ * Mark a completed task as incomplete in-place within todo.txt.
+ * Clears the completion mark and completion date; restores priority if present.
+ */
+export async function uncompleteTodo(
+  todoFilePath: string,
+  item: TodoItem,
+): Promise<TodoItem[]> {
+  const uncompletedItem: TodoItem = {
+    ...item,
+    completed: false,
+    completionDate: undefined,
+  };
+  uncompletedItem.raw = serializeItem(uncompletedItem);
+  return updateTodo(todoFilePath, uncompletedItem);
+}
+
+/**
  * Read and parse the done.txt file. Returns an empty array if the file
  * does not exist or if no doneFilePath is configured.
  */

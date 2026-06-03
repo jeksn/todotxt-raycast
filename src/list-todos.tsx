@@ -19,6 +19,7 @@ import { getPriorityColor, PRIORITIES } from "./types";
 import {
   readTodos,
   completeTodo,
+  uncompleteTodo,
   deleteTodo,
   updateTodo,
   sortTodos,
@@ -167,7 +168,9 @@ function groupItems(items: TodoItem[], groupBy: GroupBy): Sections {
 function TodoActions({
   item,
   showCompleted,
+  archiveDone,
   onComplete,
+  onUncomplete,
   onDelete,
   onUpdate,
   onToggleCompleted,
@@ -176,7 +179,9 @@ function TodoActions({
 }: {
   item: TodoItem;
   showCompleted: boolean;
+  archiveDone: boolean;
   onComplete: (item: TodoItem) => Promise<void>;
+  onUncomplete: (item: TodoItem) => Promise<void>;
   onDelete: (item: TodoItem) => Promise<void>;
   onUpdate: (item: TodoItem) => Promise<void>;
   onToggleCompleted: () => void;
@@ -196,6 +201,14 @@ function TodoActions({
             onAction={() => onComplete(item)}
           />
         )}
+        {item.completed && !archiveDone && (
+          <Action
+            title="Mark as Incomplete"
+            icon={Icon.Circle}
+            shortcut={{ modifiers: ["cmd"], key: "d" }}
+            onAction={() => onUncomplete(item)}
+          />
+        )}
         <Action
           title="Edit Task"
           icon={Icon.Pencil}
@@ -203,7 +216,7 @@ function TodoActions({
           onAction={() => push(<EditTodoForm item={item} onSave={onUpdate} />)}
         />
         <Action
-          title="Add New Task"
+          title="Create Task"
           icon={Icon.Plus}
           shortcut={{ modifiers: ["cmd"], key: "n" }}
           onAction={onAddNew}
@@ -337,6 +350,32 @@ export default function ListTodos() {
       } catch (err) {
         toast.style = Toast.Style.Failure;
         toast.title = "Failed to complete task";
+        toast.message = err instanceof Error ? err.message : String(err);
+      }
+    },
+    [prefs, mutate],
+  );
+
+  const handleUncomplete = useCallback(
+    async (item: TodoItem) => {
+      const toast = await showToast({
+        style: Toast.Style.Animated,
+        title: "Marking incomplete…",
+      });
+      try {
+        await mutate(uncompleteTodo(prefs.todoFilePath, item), {
+          optimisticUpdate: (current) =>
+            current?.map((t) =>
+              t.lineNumber === item.lineNumber
+                ? { ...t, completed: false, completionDate: undefined }
+                : t,
+            ),
+        });
+        toast.style = Toast.Style.Success;
+        toast.title = "Task marked incomplete";
+      } catch (err) {
+        toast.style = Toast.Style.Failure;
+        toast.title = "Failed to update task";
         toast.message = err instanceof Error ? err.message : String(err);
       }
     },
@@ -547,7 +586,9 @@ export default function ListTodos() {
                 <TodoActions
                   item={item}
                   showCompleted={showCompleted}
+                  archiveDone={prefs.archiveDone}
                   onComplete={handleComplete}
+                  onUncomplete={handleUncomplete}
                   onDelete={handleDelete}
                   onUpdate={handleUpdate}
                   onToggleCompleted={() => setShowCompleted((v) => !v)}
@@ -562,13 +603,13 @@ export default function ListTodos() {
 
       {!isLoading && allItems.length === 0 && (
         <List.EmptyView
-          title="No Todos Found"
-          description="Press ⌘N to add your first task, or check your todo.txt file path in Preferences."
-          icon={Icon.Checkmark}
+          title="No Tasks"
+          description="Press ⌘N to create your first task."
+          icon={Icon.CheckCircle}
           actions={
             <ActionPanel>
               <Action
-                title="Add New Task"
+                title="Create Task"
                 icon={Icon.Plus}
                 shortcut={{ modifiers: ["cmd"], key: "n" }}
                 onAction={handleAddNew}

@@ -1,8 +1,8 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
-  "name": "todotxt",
-  "title": "TodoTXT",
-  "description": "Manage todos using the todo.txt standard format with priorities, projects, contexts, and more.",
+  "name": "todo-txt",
+  "title": "Todo.txt",
+  "description": "Manage tasks in todo.txt format with priorities, projects, contexts, and due dates.",
   "icon": "extension-icon.png",
   "author": "jeksn",
   "license": "MIT",
@@ -11,36 +11,36 @@
   "commands": [
     {
       "name": "list-todos",
-      "title": "List Todos",
-      "description": "Browse, search, filter, and manage your todo.txt tasks",
+      "title": "Search Todos",
+      "description": "Search, filter, and manage tasks in your todo.txt file",
       "mode": "view",
-      "keywords": ["todo", "task", "list"]
+      "keywords": ["todo", "task", "list", "search"]
     },
     {
       "name": "add-todo",
-      "title": "Add Todo",
-      "description": "Add a new todo with priority, project, context, and due date",
+      "title": "Create Todo",
+      "description": "Create a new task with priority, project, context, and due date",
       "mode": "view",
       "keywords": ["todo", "task", "add", "new", "create"]
     },
     {
       "name": "quick-add",
-      "title": "Quick Add Todo",
-      "description": "Quickly add a todo from a single text field using todo.txt syntax",
+      "title": "Quick Create Todo",
+      "description": "Create a task using raw todo.txt syntax in a single text field",
       "mode": "view",
-      "keywords": ["todo", "task", "quick", "add"]
+      "keywords": ["todo", "task", "quick", "add", "create"]
     },
     {
       "name": "list-done",
-      "title": "List Completed Todos",
-      "description": "Browse completed tasks from done.txt",
+      "title": "Search Completed Todos",
+      "description": "Search completed tasks in done.txt and restore or delete them",
       "mode": "view",
       "keywords": ["todo", "done", "completed", "archive"]
     },
     {
       "name": "menu-bar",
       "title": "Todo Count",
-      "description": "Show pending todo count in the menu bar",
+      "description": "Show pending task count in the menu bar",
       "mode": "menu-bar",
       "interval": "5m"
     }
@@ -119,8 +119,8 @@
     "prepublishOnly": "echo \"\\n\\nIt seems like you are trying to publish the Raycast extension to npm.\\n\\nIf you did intend to publish it to npm, remove the \\`prepublishOnly\\` script and rerun \\`npm publish\\` again.\\nIf you wanted to publish it to the Raycast Store instead, use \\`npm run publish\\` instead.\\n\\n\" && exit 1"
   },
   "dependencies": {
-    "@raycast/api": "^1.103.0",
-    "@raycast/utils": "^2.2.1"
+    "@raycast/api": "^1.104.19",
+    "@raycast/utils": "^2.2.5"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^2.0.4",
