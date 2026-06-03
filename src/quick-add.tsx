@@ -10,7 +10,7 @@ import {
 } from "@raycast/api";
 import { useState } from "react";
 import { appendTodo, parseLine } from "./storage";
-import { getPreferences } from "./preferences";
+import { useValidatedPrefs } from "./preferences";
 
 /**
  * Quick Add — a single text field that accepts either:
@@ -21,7 +21,7 @@ import { getPreferences } from "./preferences";
  */
 export default function QuickAdd() {
   const { pop } = useNavigation();
-  const prefs = getPreferences();
+  const { prefs, pathsValid } = useValidatedPrefs();
   const today = new Date().toISOString().split("T")[0];
 
   const [raw, setRaw] = useState("");
@@ -58,7 +58,7 @@ export default function QuickAdd() {
   }
 
   async function handleSubmit() {
-    if (!validate()) return;
+    if (!pathsValid || !validate()) return;
 
     const line = buildLine(raw);
     const toast = await showToast({

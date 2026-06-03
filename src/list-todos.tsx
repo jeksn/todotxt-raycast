@@ -25,7 +25,7 @@ import {
   sortTodos,
   serializeItem,
 } from "./storage";
-import { getPreferences } from "./preferences";
+import { useValidatedPrefs } from "./preferences";
 import EditTodoForm from "./edit-todo-form";
 import AddTodo from "./add-todo";
 
@@ -291,7 +291,7 @@ function TodoActions({
 // ---------------------------------------------------------------------------
 
 export default function ListTodos() {
-  const prefs = getPreferences();
+  const { prefs, pathsValid } = useValidatedPrefs();
   const { push } = useNavigation();
 
   // Single dropdown value encodes both sort and group as "sort|group"
@@ -601,10 +601,26 @@ export default function ListTodos() {
         </List.Section>
       ))}
 
-      {!isLoading && allItems.length === 0 && (
+      {!isLoading && !pathsValid && (
+        <List.EmptyView
+          title="Configuration Error"
+          description="Your todo.txt file path is invalid. Open Preferences to fix it."
+          icon={Icon.ExclamationMark}
+          actions={
+            <ActionPanel>
+              <Action
+                title="Open Preferences"
+                icon={Icon.Gear}
+                onAction={openExtensionPreferences}
+              />
+            </ActionPanel>
+          }
+        />
+      )}
+      {!isLoading && pathsValid && allItems.length === 0 && (
         <List.EmptyView
           title="No Tasks"
-          description="Press ⌘N to create your first task."
+          description="Press ⌘N to add your first task."
           icon={Icon.CheckCircle}
           actions={
             <ActionPanel>

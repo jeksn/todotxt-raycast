@@ -21,7 +21,7 @@ import {
   deleteDoneTodo,
   serializeItem,
 } from "./storage";
-import { getPreferences } from "./preferences";
+import { useValidatedPrefs } from "./preferences";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -106,7 +106,7 @@ function sortDone(items: TodoItem[], order: DoneSort): TodoItem[] {
 }
 
 export default function ListDone() {
-  const prefs = getPreferences();
+  const { prefs } = useValidatedPrefs();
   const [sortOrder, setSortOrder] = useState<DoneSort>("completion-date-desc");
 
   const {

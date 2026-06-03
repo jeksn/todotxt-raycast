@@ -1,4 +1,4 @@
-import { readFile, writeFile, access, appendFile } from "fs/promises";
+import { readFile, writeFile, access, appendFile, stat } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { homedir } from "os";
 import { randomUUID } from "crypto";
@@ -23,6 +23,59 @@ export async function fileExists(filePath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Validate that the configured file paths are usable.
+ * Returns an error message string if something is wrong, or null if all good.
+ *
+ * Checks:
+ * - todoFilePath must not point to a directory
+ * - todoFilePath parent directory must exist and be writable
+ * - doneFilePath (if set) parent directory must exist
+ */
+export async function validatePaths(
+  todoFilePath: string,
+  doneFilePath: string | undefined,
+): Promise<string | null> {
+  const todoPath = expandPath(todoFilePath);
+  const todoDir = dirname(todoPath);
+
+  // Check todo.txt parent directory exists
+  try {
+    const dirStat = await stat(todoDir);
+    if (!dirStat.isDirectory()) {
+      return `The folder for your todo.txt file does not exist: ${todoDir}`;
+    }
+  } catch {
+    return `The folder for your todo.txt file does not exist: ${todoDir}`;
+  }
+
+  // Check todo.txt path is not itself a directory
+  try {
+    const fileStat = await stat(todoPath);
+    if (fileStat.isDirectory()) {
+      return `Your todo.txt path points to a folder, not a file: ${todoPath}`;
+    }
+  } catch {
+    // File doesn't exist yet — that's fine, it will be created on first add
+  }
+
+  // Check done.txt parent directory if a custom path is set
+  if (doneFilePath) {
+    const donePath = expandPath(doneFilePath);
+    const doneDir = dirname(donePath);
+    try {
+      const dirStat = await stat(doneDir);
+      if (!dirStat.isDirectory()) {
+        return `The folder for your done.txt file does not exist: ${doneDir}`;
+      }
+    } catch {
+      return `The folder for your done.txt file does not exist: ${doneDir}`;
+    }
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------

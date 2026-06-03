@@ -11,7 +11,7 @@ import { usePromise } from "@raycast/utils";
 import { useState, useEffect } from "react";
 import { readTodos, completeTodo, sortTodos } from "./storage";
 import { getCachedTodos } from "./cache";
-import { getPreferences } from "./preferences";
+import { useValidatedPrefs } from "./preferences";
 import { getPriorityColor } from "./types";
 import type { TodoItem } from "./types";
 
@@ -24,7 +24,7 @@ function itemTitle(item: TodoItem): string {
 }
 
 export default function MenuBar() {
-  const prefs = getPreferences();
+  const { prefs } = useValidatedPrefs();
 
   // Seed state synchronously from cache — menu bar title is correct on first frame
   const [todos, setTodos] = useState<TodoItem[]>(() => getCachedTodos());

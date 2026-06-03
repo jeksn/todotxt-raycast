@@ -11,7 +11,7 @@ import {
 import { useState } from "react";
 import { PRIORITIES } from "./types";
 import { appendTodo, buildDescription } from "./storage";
-import { getPreferences } from "./preferences";
+import { useValidatedPrefs } from "./preferences";
 
 interface Props {
   /** Called after a todo is successfully added (used when pushed from list) */
@@ -22,7 +22,7 @@ interface Props {
 
 export default function AddTodo({ onAdd, initialText }: Props) {
   const { pop } = useNavigation();
-  const prefs = getPreferences();
+  const { prefs, pathsValid } = useValidatedPrefs();
   const today = new Date().toISOString().split("T")[0];
 
   const [text, setText] = useState(initialText ?? "");
@@ -44,7 +44,7 @@ export default function AddTodo({ onAdd, initialText }: Props) {
   }
 
   async function handleSubmit() {
-    if (!validate()) return;
+    if (!pathsValid || !validate()) return;
 
     const parsedProjects = projects
       .split(/[\s,]+/)
